@@ -1,0 +1,5 @@
+package ctypes
+
+/*
+*/
+import "C"
