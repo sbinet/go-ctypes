@@ -5,6 +5,7 @@ package ctypes
 import "C"
 
 import (
+	"os"
 	"reflect"
 	"unsafe"
 )
@@ -254,6 +255,12 @@ func (t *cstruct_type) Size() uintptr {
 }
 
 
+// An Encoder is bound to a particular reflect.Type and knows how to
+// convert a Go value into a ctypes.Value
+type Encoder interface {
+	Encode(v interface{}) (Value, os.Error)
+}
+
 // Encode a Go value into a ctypes.Value
 func Encode(v interface{}) Value {
 	rv := reflect.ValueOf(v).Elem()
@@ -300,112 +307,112 @@ func encode_bool(b []byte, p unsafe.Pointer) {
 	src := (*bool)(p)
 	dst := (*bool)(unsafe.Pointer(&b[0]))
 	*dst = *src
-	b = b[0:sz_bool]
+	b = b[sz_bool:]
 }
 
 func encode_int(b []byte, p unsafe.Pointer) {
 	src := (*int)(p)
 	dst := (*int)(unsafe.Pointer(&b[0]))
 	*dst = *src
-	b = b[0:sz_int]
+	b = b[sz_int:]
 }
 
 func encode_int8(b []byte, p unsafe.Pointer) {
 	src := (*int8)(p)
 	dst := (*int8)(unsafe.Pointer(&b[0]))
 	*dst = *src
-	b = b[0:sz_int8]
+	b = b[sz_int8:]
 }
 
 func encode_int16(b []byte, p unsafe.Pointer) {
 	src := (*int16)(p)
 	dst := (*int16)(unsafe.Pointer(&b[0]))
 	*dst = *src
-	b = b[0:sz_int16]
+	b = b[sz_int16:]
 }
 
 func encode_int32(b []byte, p unsafe.Pointer) {
 	src := (*int32)(p)
 	dst := (*int32)(unsafe.Pointer(&b[0]))
 	*dst = *src
-	b = b[0:sz_int32]
+	b = b[sz_int32:]
 }
 
 func encode_int64(b []byte, p unsafe.Pointer) {
 	src := (*int64)(p)
 	dst := (*int64)(unsafe.Pointer(&b[0]))
 	*dst = *src
-	b = b[0:sz_int64]
+	b = b[sz_int64:]
 }
 
 func encode_uint(b []byte, p unsafe.Pointer) {
 	src := (*uint)(p)
 	dst := (*uint)(unsafe.Pointer(&b[0]))
 	*dst = *src
-	b = b[0:sz_uint]
+	b = b[sz_uint:]
 }
 
 func encode_uint8(b []byte, p unsafe.Pointer) {
 	src := (*uint8)(p)
 	dst := (*uint8)(unsafe.Pointer(&b[0]))
 	*dst = *src
-	b = b[0:sz_uint8]
+	b = b[sz_uint8:]
 }
 
 func encode_uint16(b []byte, p unsafe.Pointer) {
 	src := (*uint16)(p)
 	dst := (*uint16)(unsafe.Pointer(&b[0]))
 	*dst = *src
-	b = b[0:sz_uint16]
+	b = b[sz_uint16:]
 }
 
 func encode_uint32(b []byte, p unsafe.Pointer) {
 	src := (*uint32)(p)
 	dst := (*uint32)(unsafe.Pointer(&b[0]))
 	*dst = *src
-	b = b[0:sz_uint32]
+	b = b[sz_uint32:]
 }
 
 func encode_uint64(b []byte, p unsafe.Pointer) {
 	src := (*uint64)(p)
 	dst := (*uint64)(unsafe.Pointer(&b[0]))
 	*dst = *src
-	b = b[0:sz_uint64]
+	b = b[sz_uint64:]
 }
 
 func encode_uintptr(b []byte, p unsafe.Pointer) {
 	src := (*uintptr)(p)
 	dst := (*uintptr)(unsafe.Pointer(&b[0]))
 	*dst = *src
-	b = b[0:sz_uintptr]
+	b = b[sz_uintptr:]
 }
 
 func encode_float32(b []byte, p unsafe.Pointer) {
 	src := (*float32)(p)
 	dst := (*float32)(unsafe.Pointer(&b[0]))
 	*dst = *src
-	b = b[0:sz_float32]
+	b = b[sz_float32:]
 }
 
 func encode_float64(b []byte, p unsafe.Pointer) {
 	src := (*float64)(p)
 	dst := (*float64)(unsafe.Pointer(&b[0]))
 	*dst = *src
-	b = b[0:sz_float64]
+	b = b[sz_float64:]
 }
 
 func encode_complex64(b []byte, p unsafe.Pointer) {
 	src := (*complex64)(p)
 	dst := (*complex64)(unsafe.Pointer(&b[0]))
 	*dst = *src
-	b = b[0:sz_complex64]
+	b = b[sz_complex64:]
 }
 
 func encode_complex128(b []byte, p unsafe.Pointer) {
 	src := (*complex128)(p)
 	dst := (*complex128)(unsafe.Pointer(&b[0]))
 	*dst = *src
-	b = b[0:sz_complex128]
+	b = b[sz_complex128:]
 }
 
 func encode_array(b []byte, p unsafe.Pointer) {
@@ -423,7 +430,7 @@ func encode_ptr(b []byte, p unsafe.Pointer) {
 	src := (*uintptr)(p)
 	dst := (*uintptr)(unsafe.Pointer(&b[0]))
 	*dst = *src
-	b = b[0:sz_uintptr]
+	b = b[sz_uintptr:]
 }
 
 func encode_slice(b []byte, p unsafe.Pointer) {
