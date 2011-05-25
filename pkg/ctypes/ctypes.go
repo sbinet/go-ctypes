@@ -102,15 +102,15 @@ type StructField struct {
 }
 
 type Value struct {
-	c []byte // the C value for that Value
-	t Type   // the C type of that Value
+	Buffer []byte // the C value for that Value
+	Type Type   // the C type of that Value
 }
 
 func New(t Type) Value {
 	if t == nil {
 		panic("ctypes: New(nil)")
 	}
-	return Value{c:make([]byte, t.Size()), t:t}
+	return Value{Buffer:make([]byte, t.Size()), Type:t}
 }
 
 // C type for a float-complex
@@ -261,7 +261,7 @@ func Encode(v interface{}) Value {
 	t := TypeOf(rt)
 	c_value := New(t)
 	
-	encode_value(c_value.c, rv)
+	encode_value(c_value.Buffer, rv)
 	return c_value
 }
 
