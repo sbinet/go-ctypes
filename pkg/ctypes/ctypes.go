@@ -6,6 +6,7 @@ import "C"
 
 import (
 	"reflect"
+	"unsafe"
 )
 
 // Type is the representation of a C type.
@@ -129,7 +130,7 @@ type doublecomplex struct {
 }
 
 // get the C type corresponding to a Go type
-func TypeFrom(t reflect.Type) Type {
+func TypeOf(t reflect.Type) Type {
 	switch t.Kind() {
 	case reflect.Bool, 
 		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
@@ -182,7 +183,7 @@ func (t *common_type) Kind() Kind {
 }
 
 func (t *common_type) Elem() Type {
-	return TypeFrom(t.Type.Elem())
+	return TypeOf(t.Type.Elem())
 }
 
 func (t *common_type) Field(i int) (c StructField) {
@@ -190,7 +191,7 @@ func (t *common_type) Field(i int) (c StructField) {
 	c = StructField{
 	PkgPath: f.PkgPath,
 	Name: f.Name,
-	Type: TypeFrom(f.Type),
+	Type: TypeOf(f.Type),
 	Tag: f.Tag,
 	// FIXME?: this should be corrected for vlarrays/cstrings
 	Offset: f.Offset,
@@ -238,7 +239,7 @@ func new_cstruct(t reflect.Type) *cstruct_type {
 	nfields := t.NumField()
 	for i := 0; i < nfields; i++ {
 		f := t.Field(i)
-		c.fields[f.Name] = TypeFrom(f.Type)
+		c.fields[f.Name] = TypeOf(f.Type)
 	}
 	return c
 }
@@ -250,6 +251,244 @@ func (t *cstruct_type) Size() uintptr {
 		sz += v.Size()
 	}
 	return sz
+}
+
+
+// Encode a Go value into a ctypes.Value
+func Encode(v interface{}) Value {
+	rv := reflect.ValueOf(v).Elem()
+	rt := reflect.TypeOf(v).Elem()
+	t := TypeOf(rt)
+	c_value := New(t)
+	
+	encode_value(c_value.c, rv)
+	return c_value
+}
+
+const (
+	sz_bool = unsafe.Sizeof(bool(true))
+
+	sz_int  = unsafe.Sizeof(int(0))
+	sz_int8 = unsafe.Sizeof(int8(0))
+	sz_int16 = unsafe.Sizeof(int16(0))
+	sz_int32 = unsafe.Sizeof(int32(0))
+	sz_int64 = unsafe.Sizeof(int64(0))
+
+	sz_uint  = unsafe.Sizeof(uint(0))
+	sz_uint8 = unsafe.Sizeof(uint8(0))
+	sz_uint16 = unsafe.Sizeof(uint16(0))
+	sz_uint32 = unsafe.Sizeof(uint32(0))
+	sz_uint64 = unsafe.Sizeof(uint64(0))
+
+	sz_uintptr = unsafe.Sizeof(uintptr(0))
+
+	sz_float32 = unsafe.Sizeof(float32(0))
+	sz_float64 = unsafe.Sizeof(float64(0))
+
+	sz_complex64 = unsafe.Sizeof(complex(float32(0),float32(0)))
+	sz_complex128 = unsafe.Sizeof(complex(float64(0),float64(0)))
+)
+
+type enc_op func(b []byte, p unsafe.Pointer)
+var enc_op_table []enc_op
+
+func encode_noop(b []byte, p unsafe.Pointer) {
+	panic("noop!")
+}
+
+func encode_bool(b []byte, p unsafe.Pointer) {
+	src := (*bool)(p)
+	dst := (*bool)(unsafe.Pointer(&b[0]))
+	*dst = *src
+	b = b[0:sz_bool]
+}
+
+func encode_int(b []byte, p unsafe.Pointer) {
+	src := (*int)(p)
+	dst := (*int)(unsafe.Pointer(&b[0]))
+	*dst = *src
+	b = b[0:sz_int]
+}
+
+func encode_int8(b []byte, p unsafe.Pointer) {
+	src := (*int8)(p)
+	dst := (*int8)(unsafe.Pointer(&b[0]))
+	*dst = *src
+	b = b[0:sz_int8]
+}
+
+func encode_int16(b []byte, p unsafe.Pointer) {
+	src := (*int16)(p)
+	dst := (*int16)(unsafe.Pointer(&b[0]))
+	*dst = *src
+	b = b[0:sz_int16]
+}
+
+func encode_int32(b []byte, p unsafe.Pointer) {
+	src := (*int32)(p)
+	dst := (*int32)(unsafe.Pointer(&b[0]))
+	*dst = *src
+	b = b[0:sz_int32]
+}
+
+func encode_int64(b []byte, p unsafe.Pointer) {
+	src := (*int64)(p)
+	dst := (*int64)(unsafe.Pointer(&b[0]))
+	*dst = *src
+	b = b[0:sz_int64]
+}
+
+func encode_uint(b []byte, p unsafe.Pointer) {
+	src := (*uint)(p)
+	dst := (*uint)(unsafe.Pointer(&b[0]))
+	*dst = *src
+	b = b[0:sz_uint]
+}
+
+func encode_uint8(b []byte, p unsafe.Pointer) {
+	src := (*uint8)(p)
+	dst := (*uint8)(unsafe.Pointer(&b[0]))
+	*dst = *src
+	b = b[0:sz_uint8]
+}
+
+func encode_uint16(b []byte, p unsafe.Pointer) {
+	src := (*uint16)(p)
+	dst := (*uint16)(unsafe.Pointer(&b[0]))
+	*dst = *src
+	b = b[0:sz_uint16]
+}
+
+func encode_uint32(b []byte, p unsafe.Pointer) {
+	src := (*uint32)(p)
+	dst := (*uint32)(unsafe.Pointer(&b[0]))
+	*dst = *src
+	b = b[0:sz_uint32]
+}
+
+func encode_uint64(b []byte, p unsafe.Pointer) {
+	src := (*uint64)(p)
+	dst := (*uint64)(unsafe.Pointer(&b[0]))
+	*dst = *src
+	b = b[0:sz_uint64]
+}
+
+func encode_uintptr(b []byte, p unsafe.Pointer) {
+	src := (*uintptr)(p)
+	dst := (*uintptr)(unsafe.Pointer(&b[0]))
+	*dst = *src
+	b = b[0:sz_uintptr]
+}
+
+func encode_float32(b []byte, p unsafe.Pointer) {
+	src := (*float32)(p)
+	dst := (*float32)(unsafe.Pointer(&b[0]))
+	*dst = *src
+	b = b[0:sz_float32]
+}
+
+func encode_float64(b []byte, p unsafe.Pointer) {
+	src := (*float64)(p)
+	dst := (*float64)(unsafe.Pointer(&b[0]))
+	*dst = *src
+	b = b[0:sz_float64]
+}
+
+func encode_complex64(b []byte, p unsafe.Pointer) {
+	src := (*complex64)(p)
+	dst := (*complex64)(unsafe.Pointer(&b[0]))
+	*dst = *src
+	b = b[0:sz_complex64]
+}
+
+func encode_complex128(b []byte, p unsafe.Pointer) {
+	src := (*complex128)(p)
+	dst := (*complex128)(unsafe.Pointer(&b[0]))
+	*dst = *src
+	b = b[0:sz_complex128]
+}
+
+func encode_array(b []byte, p unsafe.Pointer) {
+	arr := (*reflect.Value)(p)
+	op := enc_op_table[arr.Type().Elem().Kind()]
+
+	length := arr.Len()
+	for i := 0; i < length; i++ {
+		src := unsafe.Pointer(arr.Index(i).UnsafeAddr())
+		op(b, src)
+	}
+}
+
+func encode_ptr(b []byte, p unsafe.Pointer) {
+	src := (*uintptr)(p)
+	dst := (*uintptr)(unsafe.Pointer(&b[0]))
+	*dst = *src
+	b = b[0:sz_uintptr]
+}
+
+func encode_slice(b []byte, p unsafe.Pointer) {
+	slice := (*reflect.SliceHeader)(p)
+	encode_int(b, unsafe.Pointer(&slice.Len))
+	encode_ptr(b, unsafe.Pointer(&slice.Data))
+}
+
+func encode_string(b []byte, p unsafe.Pointer) {
+	
+}
+
+func encode_struct(b []byte, p unsafe.Pointer) {
+	v := (*reflect.Value)(p)
+	nfields := v.NumField()
+	for i := 0; i < nfields; i++ {
+		f := v.Field(i)
+		encode_value(b, f)
+	}
+}
+
+func encode_value(b []byte, v reflect.Value) {
+	
+	kind := v.Type().Kind()
+	op := enc_op_table[kind]
+	switch kind {
+	default:
+		op(b, unsafe.Pointer(v.UnsafeAddr()))
+	case reflect.Array:
+		op(b, unsafe.Pointer(&v))
+	case reflect.Ptr:
+		op(b, unsafe.Pointer(v.UnsafeAddr()))
+	case reflect.Slice, reflect.String, reflect.Struct:
+		op(b, unsafe.Pointer(&v))
+	}
+}
+
+func init() {
+	enc_op_table = []enc_op{
+		reflect.Bool: encode_bool,
+		reflect.Int:   encode_int,
+		reflect.Int8:  encode_int8,
+		reflect.Int16: encode_int16,
+		reflect.Int32: encode_int32,
+		reflect.Int64: encode_int64,
+		reflect.Uint:   encode_uint,
+		reflect.Uint8:  encode_uint8,
+		reflect.Uint16: encode_uint16,
+		reflect.Uint32: encode_uint32,
+		reflect.Uint64: encode_uint64,
+		reflect.Uintptr: encode_uintptr,
+		reflect.Float32: encode_float32,
+		reflect.Float64: encode_float64,
+		reflect.Complex64: encode_complex64,
+		reflect.Complex128: encode_complex128,
+		reflect.Array: encode_array,
+		reflect.Chan: encode_noop,
+		reflect.Func: encode_noop,
+		reflect.Interface: encode_noop,
+		reflect.Map: encode_noop,
+		reflect.Ptr: encode_ptr,
+		reflect.Slice: encode_slice,
+		reflect.String: encode_string,
+		reflect.Struct: encode_struct,
+	}
 }
 
 // EOF
