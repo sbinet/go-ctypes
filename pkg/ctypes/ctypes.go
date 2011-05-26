@@ -527,8 +527,10 @@ func encode_value(cv *Value, rv reflect.Value) {
 		op(cv, unsafe.Pointer(&rv))
 	case reflect.Ptr:
 		op(cv, unsafe.Pointer(rv.UnsafeAddr()))
-	case reflect.Slice, reflect.String, reflect.Struct:
+	case reflect.Slice, reflect.Struct:
 		op(cv, unsafe.Pointer(&rv))
+	case reflect.String:
+		op(cv, unsafe.Pointer(rv.UnsafeAddr()))
 	}
 }
 
