@@ -543,7 +543,9 @@ func encode_value(cv *Value, rv reflect.Value) {
 		op(cv, unsafe.Pointer(&rv))
 	case reflect.Ptr:
 		op(cv, unsafe.Pointer(rv.UnsafeAddr()))
-	case reflect.Slice, reflect.Struct:
+	case reflect.Slice:
+		op(cv, unsafe.Pointer(rv.UnsafeAddr()))
+	case reflect.Struct:
 		op(cv, unsafe.Pointer(&rv))
 	case reflect.String:
 		op(cv, unsafe.Pointer(rv.UnsafeAddr()))
@@ -728,7 +730,6 @@ func decode_string(v *Value, p unsafe.Pointer) {
 	dst := (*reflect.StringHeader)(p)
 	dst.Data = src.Data
 	dst.Len  = src.Len
-	//decode_ptr(v, unsafe.Pointer(cstr))
 	v.idx += sz_uintptr
 }
 
@@ -752,7 +753,9 @@ func decode_value(cv *Value, rv reflect.Value) {
 		op(cv, unsafe.Pointer(&rv))
 	case reflect.Ptr:
 		op(cv, unsafe.Pointer(rv.UnsafeAddr()))
-	case reflect.Slice, reflect.Struct:
+	case reflect.Slice:
+		op(cv, unsafe.Pointer(rv.UnsafeAddr()))
+	case reflect.Struct:
 		op(cv, unsafe.Pointer(&rv))
 	case reflect.String:
 		op(cv, unsafe.Pointer(rv.UnsafeAddr()))
