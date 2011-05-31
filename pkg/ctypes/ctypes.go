@@ -562,7 +562,7 @@ func encode_value(cv *Value, rv reflect.Value) {
 	case reflect.Array:
 		op(cv, unsafe.Pointer(&rv))
 	case reflect.Ptr:
-		op(cv, unsafe.Pointer(rv.UnsafeAddr()))
+		op(cv, unsafe.Pointer(rv.Pointer()))
 	case reflect.Slice:
 		op(cv, unsafe.Pointer(rv.UnsafeAddr()))
 	case reflect.Struct:
@@ -595,7 +595,8 @@ func (d *ctype_decoder) Decode(v interface{}) (*Value, os.Error) {
 	if rt != d.v.Type().GoType() {
 		return nil, os.NewError("cannot decode this type [" + rt.String() + "]")
 	}
-	d.v.Reset()
+	//d.v.Reset()
+	d.v.idx = 0
 	decode_value(d.v, rv)
 	return d.v, nil
 }
@@ -774,9 +775,7 @@ func decode_value(cv *Value, rv reflect.Value) {
 	case reflect.Array:
 		op(cv, unsafe.Pointer(&rv))
 	case reflect.Ptr:
-		//println("++>",kind.String())
 		op(cv, unsafe.Pointer(rv.Pointer()))
-		//println("<++",kind.String())
 	case reflect.Slice:
 		op(cv, unsafe.Pointer(rv.UnsafeAddr()))
 	case reflect.Struct:
