@@ -70,24 +70,24 @@ func (k Kind) String() string {
 }
 
 const (
-	Invalid Kind = Kind(reflect.Invalid)
-	Bool         = Kind(reflect.Bool)
-	Int          = Kind(reflect.Int)
-	Int8         = Kind(reflect.Int8)
-	Int16        = Kind(reflect.Int16)
-	Int32        = Kind(reflect.Int32)
-	Int64        = Kind(reflect.Int64)
-	Uint         = Kind(reflect.Uint)
-	Uint8        = Kind(reflect.Uint8)
-	Uint16       = Kind(reflect.Uint16)
-	Uint32       = Kind(reflect.Uint32)
-	Uint64       = Kind(reflect.Uint64)
-	Uintptr      = Kind(reflect.Uintptr)
-	Float32      = Kind(reflect.Float32)
-	Float64      = Kind(reflect.Float64)
-	Complex64    = Kind(reflect.Complex64)
-	Complex128   = Kind(reflect.Complex128)
-	Array        = Kind(reflect.Array)
+	Invalid    Kind = Kind(reflect.Invalid)
+	Bool            = Kind(reflect.Bool)
+	Int             = Kind(reflect.Int)
+	Int8            = Kind(reflect.Int8)
+	Int16           = Kind(reflect.Int16)
+	Int32           = Kind(reflect.Int32)
+	Int64           = Kind(reflect.Int64)
+	Uint            = Kind(reflect.Uint)
+	Uint8           = Kind(reflect.Uint8)
+	Uint16          = Kind(reflect.Uint16)
+	Uint32          = Kind(reflect.Uint32)
+	Uint64          = Kind(reflect.Uint64)
+	Uintptr         = Kind(reflect.Uintptr)
+	Float32         = Kind(reflect.Float32)
+	Float64         = Kind(reflect.Float64)
+	Complex64       = Kind(reflect.Complex64)
+	Complex128      = Kind(reflect.Complex128)
+	Array           = Kind(reflect.Array)
 	//Chan        
 	//Func
 	//Interface
@@ -299,43 +299,72 @@ func (t *cstring_type) Size() uintptr {
 
 type cstruct_type struct {
 	common_type "cstruct"
-	fields      map[string]Type
+	fields_map  map[string]int
+	fields_idx  []StructField
 }
 
 func new_cstruct(t reflect.Type) *cstruct_type {
 	c := &cstruct_type{
 		common_type: common_type{t},
-		fields:      make(map[string]Type)}
+		fields_map:  make(map[string]int),
+		fields_idx:  []StructField{},
+	}
+
+	fields := make([]StructField, 0, 0)
+	fmap := make(map[string]int)
 
 	nfields := t.NumField()
 	for i := 0; i < nfields; i++ {
 		f := t.Field(i)
-		c.fields[f.Name] = gotype_to_ctype(f.Type)
+		cf := gotype_to_ctype(f.Type)
+		if cf.Kind() == Slice {
+			// insert a slot for the size of the vl-array
+			csf := StructField{
+				PkgPath:   f.PkgPath,
+				Name:      f.Name + "_nbr",
+				Type:      gotype_to_ctype(reflect.TypeOf(int(0))),
+				Tag:       f.Tag + " | size of " + f.Name,
+				Offset:    f.Offset,
+				Index:     f.Index,
+				Anonymous: f.Anonymous,
+			}
+			fields = append(fields, csf)
+			fmap[f.Name+"_nbr"] = len(fields) - 1
+		}
+		csf := StructField{
+			PkgPath:   f.PkgPath,
+			Name:      f.Name,
+			Type:      gotype_to_ctype(f.Type),
+			Tag:       f.Tag + " _ size of " + f.Name,
+			Offset:    f.Offset,
+			Index:     f.Index,
+			Anonymous: f.Anonymous,
+		}
+		fields = append(fields, csf)
+		fmap[f.Name] = len(fields) - 1
 	}
+	nfields = len(fields)
+	offset := uintptr(0)
+	for idx := range fields {
+		fields[idx].Offset = offset
+		fields[idx].Index = []int{idx}
+		offset += fields[idx].Type.Size()
+	}
+	c.fields_idx = fields
+	c.fields_map = fmap
 	return c
 }
 
 func (t *cstruct_type) Field(i int) (c StructField) {
-	f := t.Type.Field(i)
-	c = StructField{
-		PkgPath: f.PkgPath,
-		Name:    f.Name,
-		Type:    gotype_to_ctype(f.Type),
-		Tag:     f.Tag,
-		// FIXME?: this should be corrected for vlarrays/cstrings
-		Offset: f.Offset,
-		// FIXME?: ditto
-		Index:     f.Index,
-		Anonymous: f.Anonymous,
-	}
+	c = t.fields_idx[i]
 	return
 }
 
 func (t *cstruct_type) Size() uintptr {
 	sz := uintptr(0)
-	for _, v := range t.fields {
+	for _, v := range t.fields_idx {
 		// FIXME: alignment ?
-		sz += v.Size()
+		sz += v.Type.Size()
 	}
 	return sz
 }
@@ -394,6 +423,7 @@ func (e *ctype_encoder) Encode(v interface{}) (*Value, os.Error) {
 }
 
 type enc_op func(v *Value, p unsafe.Pointer)
+
 var enc_op_table []enc_op
 
 func encode_noop(v *Value, p unsafe.Pointer) {
@@ -602,6 +632,7 @@ func (d *ctype_decoder) Decode(v interface{}) (*Value, os.Error) {
 }
 
 type dec_op func(v *Value, p unsafe.Pointer)
+
 var dec_op_table []dec_op
 
 func decode_noop(v *Value, p unsafe.Pointer) {
@@ -745,12 +776,12 @@ func decode_slice(v *Value, p unsafe.Pointer) {
 }
 
 func decode_string(v *Value, p unsafe.Pointer) {
-	
+
 	s := C.GoString(v.cstrings[v.idx])
 	src := (*reflect.StringHeader)(unsafe.Pointer(&s))
 	dst := (*reflect.StringHeader)(p)
 	dst.Data = src.Data
-	dst.Len  = src.Len
+	dst.Len = src.Len
 	v.idx += sz_uintptr
 }
 
