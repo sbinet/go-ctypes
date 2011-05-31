@@ -176,6 +176,12 @@ func (v *Value) Type() Type {
 	return v.t
 }
 
+func (v *Value) UnsafeAddress() unsafe.Pointer {
+	// c_addr := (*uintptr)((*uintptr)(unsafe.Pointer(&v.b[0])))
+	// return uintptr(*c_addr)
+	return unsafe.Pointer(&v.b[0])
+}
+
 // C type for a float-complex
 type floatcomplex struct {
 	real float32
@@ -199,39 +205,67 @@ func TypeOf(v interface{}) Type {
 	return gotype_to_ctype(rt)
 }
 
+// map of already translated-to-Ctypes types
+var ctypeds map[reflect.Type]Type
+
 // get the C type corresponding to a Go type
 func gotype_to_ctype(t reflect.Type) Type {
+	ctype,ok := ctypeds[t]
+	if ok {
+		// already processed...
+		return ctype
+	}
+	
 	switch t.Kind() {
 	case reflect.Bool,
 		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
 		reflect.Uintptr,
 		reflect.Float32, reflect.Float64:
-		return &common_type{t}
+		ctype := &common_type{t}
+		ctypeds[t] = ctype
+		return ctype
 
 	case reflect.Complex64:
-		return new_cstruct(g_complex64)
+		ctype := new_cstruct(g_complex64)
+		ctypeds[t] = ctype
+		return ctype
+		
 
 	case reflect.Complex128:
-		return new_cstruct(g_complex128)
+		ctype := new_cstruct(g_complex128)
+		ctypeds[t] = ctype
+		return ctype		
 
 	case reflect.Ptr:
-		return &common_type{t}
+		ctype := &common_type{t}
+		ctypeds[t] = ctype
+		return ctype
 
 	case reflect.Array:
-		return &common_type{t}
+		ctype := &common_type{t}
+		ctypeds[t] = ctype
+		return ctype
 
 	case reflect.Slice:
-		return &vlarray_type{common_type{t}}
+		ctype := &vlarray_type{common_type{t}}
+		ctypeds[t] = ctype
+		return ctype		
 
 	case reflect.String:
-		return &cstring_type{common_type{t}}
+		ctype := &cstring_type{common_type{t}}
+		ctypeds[t] = ctype
+		return ctype
 
 	case reflect.Struct:
-		return new_cstruct(t)
+		ctype := new_cstruct(t)
+		ctypeds[t] = ctype
+		return ctype
 
 	case reflect.UnsafePointer:
-		return &common_type{t}
+		ctype := &common_type{t}
+		ctypeds[t] = ctype
+		return ctype
 
 	default:
 		panic("not handled type")
@@ -345,6 +379,7 @@ func new_cstruct(t reflect.Type) *cstruct_type {
 	}
 	nfields = len(fields)
 	offset := uintptr(0)
+	// println("==cstruct==",t.Name())
 	for idx := range fields {
 		fields[idx].Offset = offset
 		fields[idx].Index = []int{idx}
@@ -352,6 +387,7 @@ func new_cstruct(t reflect.Type) *cstruct_type {
 	}
 	c.fields_idx = fields
 	c.fields_map = fmap
+	//println("==cstruct==",t.Name(),t.Size(),c.Size(),"[ok]")
 	return c
 }
 
@@ -570,7 +606,15 @@ func encode_string(v *Value, p unsafe.Pointer) {
 	s := *(*string)(p)
 	cstr := C.CString(s)
 	v.cstrings[v.idx] = cstr
-	encode_ptr(v, unsafe.Pointer(cstr))
+	// println("--encode-string...")
+	// println(v.idx)
+	// println(cstr,*(*byte)((unsafe.Pointer)(cstr)))
+	// println(C.GoString(cstr))
+	// fmt.Printf("cstr: %v\n",cstr)
+	// c_len := C.strlen(cstr)
+	// println("sz:",int(c_len))
+	encode_ptr(v, unsafe.Pointer(&cstr))
+	// println("--encode-string... [done]")
 }
 
 func encode_struct(v *Value, p unsafe.Pointer) {
@@ -772,16 +816,25 @@ func decode_ptr(v *Value, p unsafe.Pointer) {
 func decode_slice(v *Value, p unsafe.Pointer) {
 	slice := (*reflect.SliceHeader)(p)
 	decode_int(v, unsafe.Pointer(&slice.Len))
+	//println("-->",slice.Len)
 	decode_ptr(v, unsafe.Pointer(&slice.Data))
 }
 
 func decode_string(v *Value, p unsafe.Pointer) {
 
-	s := C.GoString(v.cstrings[v.idx])
+	// println("--decode-string...")
+	// fmt.Printf("--buf rst: %v\n",v.b[v.idx:])
+	cstr := (cstring)(unsafe.Pointer(&v.b[v.idx]))
+	// println("cstr:",cstr,"sz:",C.strlen(cstr))
+	s := C.GoString(cstr)
+	// println("["+s+"]")
 	src := (*reflect.StringHeader)(unsafe.Pointer(&s))
 	dst := (*reflect.StringHeader)(p)
 	dst.Data = src.Data
 	dst.Len = src.Len
+	// println(v.idx)
+	// println(v.cstrings[v.idx])
+	// println("--decode-string...[done]")
 	v.idx += sz_uintptr
 }
 
@@ -875,6 +928,8 @@ func init() {
 		reflect.String:     decode_string,
 		reflect.Struct:     decode_struct,
 	}
+
+	ctypeds = make(map[reflect.Type]Type)
 }
 
 // EOF
