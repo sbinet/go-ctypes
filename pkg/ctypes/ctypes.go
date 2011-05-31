@@ -7,6 +7,7 @@ package ctypes
 import "C"
 
 import (
+	//"fmt"
 	"os"
 	"reflect"
 	"runtime"
@@ -64,8 +65,12 @@ type Type interface {
 // The zero Kind is not a valid kind.
 type Kind reflect.Kind
 
+func (k Kind) String() string {
+	return reflect.Kind(k).String()
+}
+
 const (
-	Invalid Kind = iota
+	Invalid Kind = Kind(reflect.Invalid)
 	Bool         = Kind(reflect.Bool)
 	Int          = Kind(reflect.Int)
 	Int8         = Kind(reflect.Int8)
@@ -80,16 +85,15 @@ const (
 	Uintptr      = Kind(reflect.Uintptr)
 	Float32      = Kind(reflect.Float32)
 	Float64      = Kind(reflect.Float64)
-	Complex64
-	Complex128
-	Array = Kind(reflect.Array)
-	VLArray
-	//Chan
+	Complex64    = Kind(reflect.Complex64)
+	Complex128   = Kind(reflect.Complex128)
+	Array        = Kind(reflect.Array)
+	//Chan        
 	//Func
 	//Interface
 	//Map // <-- FIXME? can we implement this ?
 	Ptr           = Kind(reflect.Ptr)
-	Slice         = VLArray
+	Slice         = Kind(reflect.Slice)
 	String        = Kind(reflect.String)
 	Struct        = Kind(reflect.Struct)
 	UnsafePointer = Kind(reflect.UnsafePointer)
@@ -114,9 +118,25 @@ type Value struct {
 	cstrings map[int]cstring // a pool of C-string we own. index is the offset in the Value.b buffer
 }
 
+func follow_ptr(v reflect.Value) reflect.Value {
+	rv := v
+	for {
+		switch rv.Kind() {
+		case reflect.Ptr:
+			rv = rv.Elem()
+		default:
+			return rv
+		}
+	}
+	return rv
+}
+
 // ValueOf returns the ctypes.Value corresponding to the Go-value v
 func ValueOf(v interface{}) *Value {
-	rv := reflect.ValueOf(v).Elem()
+	rv := reflect.ValueOf(v)
+	//fmt.Printf("valueof--> %v\n",rv)
+	rv = follow_ptr(rv)
+	//fmt.Printf("valueof==> %v\n",rv)
 	ct := gotype_to_ctype(rv.Type())
 	return New(ct)
 }
@@ -362,12 +382,12 @@ func NewEncoder(v *Value) Encoder {
 
 // Encode a Go value into a ctypes.Value
 func (e *ctype_encoder) Encode(v interface{}) (*Value, os.Error) {
-	rt := reflect.TypeOf(v).Elem()
+	rv := follow_ptr(reflect.ValueOf(v))
+	rt := rv.Type()
 	if rt != e.v.Type().GoType() {
 		return nil, os.NewError("cannot encode this type [" + rt.String() + "]")
 	}
 
-	rv := reflect.ValueOf(v).Elem()
 	e.v.Reset()
 	encode_value(e.v, rv)
 	return e.v, nil
@@ -570,12 +590,12 @@ func NewDecoder(v *Value) Decoder {
 
 // Decode a ctypes.Value into a Go value
 func (d *ctype_decoder) Decode(v interface{}) (*Value, os.Error) {
-	rt := reflect.TypeOf(v).Elem()
+	rv := follow_ptr(reflect.ValueOf(v))
+	rt := rv.Type()
 	if rt != d.v.Type().GoType() {
 		return nil, os.NewError("cannot decode this type [" + rt.String() + "]")
 	}
-
-	rv := reflect.ValueOf(v).Elem()
+	d.v.Reset()
 	decode_value(d.v, rv)
 	return d.v, nil
 }
@@ -743,22 +763,28 @@ func decode_struct(v *Value, p unsafe.Pointer) {
 }
 
 func decode_value(cv *Value, rv reflect.Value) {
-
+	//println("rv:",rv.Type())
 	kind := rv.Type().Kind()
 	op := dec_op_table[kind]
 	switch kind {
 	default:
+		//println("-->",kind.String())
 		op(cv, unsafe.Pointer(rv.UnsafeAddr()))
+		//println("<--",kind.String())
 	case reflect.Array:
 		op(cv, unsafe.Pointer(&rv))
 	case reflect.Ptr:
-		op(cv, unsafe.Pointer(rv.UnsafeAddr()))
+		//println("++>",kind.String())
+		op(cv, unsafe.Pointer(rv.Pointer()))
+		//println("<++",kind.String())
 	case reflect.Slice:
 		op(cv, unsafe.Pointer(rv.UnsafeAddr()))
 	case reflect.Struct:
 		op(cv, unsafe.Pointer(&rv))
 	case reflect.String:
+		//println("==>",kind.String())
 		op(cv, unsafe.Pointer(rv.UnsafeAddr()))
+		//println("<==",kind.String())
 	}
 }
 
