@@ -407,27 +407,27 @@ func (t *cstruct_type) Size() uintptr {
 
 
 const (
-	sz_bool = unsafe.Sizeof(bool(true))
+	sz_bool = int(unsafe.Sizeof(bool(true)))
 
-	sz_int   = unsafe.Sizeof(int(0))
-	sz_int8  = unsafe.Sizeof(int8(0))
-	sz_int16 = unsafe.Sizeof(int16(0))
-	sz_int32 = unsafe.Sizeof(int32(0))
-	sz_int64 = unsafe.Sizeof(int64(0))
+	sz_int   = int(unsafe.Sizeof(int(0)))
+	sz_int8  = int(unsafe.Sizeof(int8(0)))
+	sz_int16 = int(unsafe.Sizeof(int16(0)))
+	sz_int32 = int(unsafe.Sizeof(int32(0)))
+	sz_int64 = int(unsafe.Sizeof(int64(0)))
 
-	sz_uint   = unsafe.Sizeof(uint(0))
-	sz_uint8  = unsafe.Sizeof(uint8(0))
-	sz_uint16 = unsafe.Sizeof(uint16(0))
-	sz_uint32 = unsafe.Sizeof(uint32(0))
-	sz_uint64 = unsafe.Sizeof(uint64(0))
+	sz_uint   = int(unsafe.Sizeof(uint(0)))
+	sz_uint8  = int(unsafe.Sizeof(uint8(0)))
+	sz_uint16 = int(unsafe.Sizeof(uint16(0)))
+	sz_uint32 = int(unsafe.Sizeof(uint32(0)))
+	sz_uint64 = int(unsafe.Sizeof(uint64(0)))
 
-	sz_uintptr = unsafe.Sizeof(uintptr(0))
+	sz_uintptr = int(unsafe.Sizeof(uintptr(0)))
 
-	sz_float32 = unsafe.Sizeof(float32(0))
-	sz_float64 = unsafe.Sizeof(float64(0))
+	sz_float32 = int(unsafe.Sizeof(float32(0)))
+	sz_float64 = int(unsafe.Sizeof(float64(0)))
 
-	sz_complex64  = unsafe.Sizeof(complex(float32(0), float32(0)))
-	sz_complex128 = unsafe.Sizeof(complex(float64(0), float64(0)))
+	sz_complex64  = int(unsafe.Sizeof(complex(float32(0), float32(0))))
+	sz_complex128 = int(unsafe.Sizeof(complex(float64(0), float64(0))))
 )
 
 // An Encoder is bound to a particular reflect.Type and knows how to
