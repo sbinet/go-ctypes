@@ -391,9 +391,8 @@ func new_cstruct(t reflect.Type) *cstruct_type {
 	return c
 }
 
-func (t *cstruct_type) Field(i int) (c StructField) {
-	c = t.fields_idx[i]
-	return
+func (t *cstruct_type) Field(i int) StructField {
+	return t.fields_idx[i]
 }
 
 func (t *cstruct_type) Size() uintptr {
