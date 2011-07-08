@@ -210,12 +210,12 @@ var ctypeds map[reflect.Type]Type
 
 // get the C type corresponding to a Go type
 func gotype_to_ctype(t reflect.Type) Type {
-	ctype,ok := ctypeds[t]
+	ctype, ok := ctypeds[t]
 	if ok {
 		// already processed...
 		return ctype
 	}
-	
+
 	switch t.Kind() {
 	case reflect.Bool,
 		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
@@ -230,12 +230,11 @@ func gotype_to_ctype(t reflect.Type) Type {
 		ctype := new_cstruct(g_complex64)
 		ctypeds[t] = ctype
 		return ctype
-		
 
 	case reflect.Complex128:
 		ctype := new_cstruct(g_complex128)
 		ctypeds[t] = ctype
-		return ctype		
+		return ctype
 
 	case reflect.Ptr:
 		ctype := &common_type{t}
@@ -250,7 +249,7 @@ func gotype_to_ctype(t reflect.Type) Type {
 	case reflect.Slice:
 		ctype := &vlarray_type{common_type{t}}
 		ctypeds[t] = ctype
-		return ctype		
+		return ctype
 
 	case reflect.String:
 		ctype := &cstring_type{common_type{t}}
@@ -296,7 +295,7 @@ func (t *common_type) Field(i int) (c StructField) {
 		PkgPath: f.PkgPath,
 		Name:    f.Name,
 		Type:    gotype_to_ctype(f.Type),
-		Tag:     f.Tag,
+		Tag:     string(f.Tag),
 		// FIXME?: this should be corrected for vlarrays/cstrings
 		Offset: f.Offset,
 		// FIXME?: ditto
@@ -357,7 +356,7 @@ func new_cstruct(t reflect.Type) *cstruct_type {
 				PkgPath:   f.PkgPath,
 				Name:      f.Name + "_nbr",
 				Type:      gotype_to_ctype(reflect.TypeOf(int(0))),
-				Tag:       f.Tag + " | size of " + f.Name,
+				Tag:       string(f.Tag) + " | size of " + f.Name,
 				Offset:    f.Offset,
 				Index:     f.Index,
 				Anonymous: f.Anonymous,
@@ -369,7 +368,7 @@ func new_cstruct(t reflect.Type) *cstruct_type {
 			PkgPath:   f.PkgPath,
 			Name:      f.Name,
 			Type:      gotype_to_ctype(f.Type),
-			Tag:       f.Tag + " _ size of " + f.Name,
+			Tag:       string(f.Tag) + " _ size of " + f.Name,
 			Offset:    f.Offset,
 			Index:     f.Index,
 			Anonymous: f.Anonymous,
