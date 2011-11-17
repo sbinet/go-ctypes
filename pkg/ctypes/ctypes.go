@@ -7,8 +7,9 @@ package ctypes
 import "C"
 
 import (
+	"errors"
 	//"fmt"
-	"os"
+
 	"reflect"
 	"runtime"
 	"unsafe"
@@ -329,7 +330,6 @@ func (t *cstring_type) Size() uintptr {
 	return ptr_sz // + nelems_sz
 }
 
-
 type cstruct_type struct {
 	common_type "cstruct"
 	fields_map  map[string]int
@@ -403,7 +403,6 @@ func (t *cstruct_type) Size() uintptr {
 	return sz
 }
 
-
 const (
 	sz_bool = int(unsafe.Sizeof(bool(true)))
 
@@ -431,7 +430,7 @@ const (
 // An Encoder is bound to a particular reflect.Type and knows how to
 // convert a Go value into a ctypes.Value
 type Encoder interface {
-	Encode(v interface{}) (*Value, os.Error)
+	Encode(v interface{}) (*Value, error)
 }
 
 type ctype_encoder struct {
@@ -444,11 +443,11 @@ func NewEncoder(v *Value) Encoder {
 }
 
 // Encode a Go value into a ctypes.Value
-func (e *ctype_encoder) Encode(v interface{}) (*Value, os.Error) {
+func (e *ctype_encoder) Encode(v interface{}) (*Value, error) {
 	rv := follow_ptr(reflect.ValueOf(v))
 	rt := rv.Type()
 	if rt != e.v.Type().GoType() {
-		return nil, os.NewError("cannot encode this type [" + rt.String() + "]")
+		return nil, errors.New("cannot encode this type [" + rt.String() + "]")
 	}
 
 	e.v.Reset()
@@ -647,7 +646,7 @@ func encode_value(cv *Value, rv reflect.Value) {
 // A Decoder is bound to a particular reflect.Type and knows how to
 // convert a ctypes.Value into a Go-value
 type Decoder interface {
-	Decode(v interface{}) (*Value, os.Error)
+	Decode(v interface{}) (*Value, error)
 }
 
 type ctype_decoder struct {
@@ -661,11 +660,11 @@ func NewDecoder(v *Value) Decoder {
 }
 
 // Decode a ctypes.Value into a Go value
-func (d *ctype_decoder) Decode(v interface{}) (*Value, os.Error) {
+func (d *ctype_decoder) Decode(v interface{}) (*Value, error) {
 	rv := follow_ptr(reflect.ValueOf(v))
 	rt := rv.Type()
 	if rt != d.v.Type().GoType() {
-		return nil, os.NewError("cannot decode this type [" + rt.String() + "]")
+		return nil, errors.New("cannot decode this type [" + rt.String() + "]")
 	}
 	//d.v.Reset()
 	d.v.idx = 0
@@ -868,7 +867,6 @@ func decode_value(cv *Value, rv reflect.Value) {
 		//println("<==",kind.String())
 	}
 }
-
 
 func init() {
 	enc_op_table = []enc_op{
