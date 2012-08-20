@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"unsafe"
 
-	"bitbucket.org/binet/go-ctypes/pkg/ctypes"
+	"github.com/sbinet/go-ctypes/pkg/ctypes"
 )
 
 type Event struct {
