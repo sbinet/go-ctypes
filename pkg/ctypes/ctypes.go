@@ -7,9 +7,7 @@ package ctypes
 import "C"
 
 import (
-	"errors"
-	//"fmt"
-
+	"fmt"
 	"reflect"
 	"runtime"
 	"unsafe"
@@ -113,9 +111,10 @@ type StructField struct {
 type cstring *C.char
 
 type Value struct {
-	b        []byte          // the C value for that Value
-	t        Type            // the C type of that Value
-	idx      int             // the cursor index in the byte buffer of the C-value
+	b   []byte // the C value for that Value
+	t   Type   // the C type of that Value
+	idx int    // the cursor index in the byte buffer of the C-value
+
 	cstrings map[int]cstring // a pool of C-string we own. index is the offset in the Value.b buffer
 }
 
@@ -152,7 +151,6 @@ func New(t Type) *Value {
 		idx:      0,
 		cstrings: make(map[int]cstring),
 	}
-
 	runtime.SetFinalizer(v, (*Value).Reset)
 	return v
 }
@@ -447,7 +445,7 @@ func (e *ctype_encoder) Encode(v interface{}) (*Value, error) {
 	rv := follow_ptr(reflect.ValueOf(v))
 	rt := rv.Type()
 	if rt != e.v.Type().GoType() {
-		return nil, errors.New("cannot encode this type [" + rt.String() + "]")
+		return nil, fmt.Errorf("cannot encode this type [%s]", rt.String())
 	}
 
 	e.v.Reset()
@@ -580,6 +578,7 @@ func encode_array(v *Value, p unsafe.Pointer) {
 	op := enc_op_table[arr.Type().Elem().Kind()]
 
 	length := arr.Len()
+	//fmt.Printf("--array-- [%v] [%v]\n", length, arr.Type().Elem().Kind())
 	for i := 0; i < length; i++ {
 		src := unsafe.Pointer(arr.Index(i).UnsafeAddr())
 		op(v, src)
@@ -605,13 +604,13 @@ func encode_string(v *Value, p unsafe.Pointer) {
 	v.cstrings[v.idx] = cstr
 	// println("--encode-string...")
 	// println(v.idx)
-	// println(cstr,*(*byte)((unsafe.Pointer)(cstr)))
+	// println(cstr, *(*byte)((unsafe.Pointer)(cstr)))
 	// println(C.GoString(cstr))
-	// fmt.Printf("cstr: %v\n",cstr)
+	// fmt.Printf("cstr: %v\n", cstr)
 	// c_len := C.strlen(cstr)
-	// println("sz:",int(c_len))
+	// println("sz:", int(c_len))
 	encode_ptr(v, unsafe.Pointer(&cstr))
-	// println("--encode-string... [done]")
+	//println("--encode-string... [done]")
 }
 
 func encode_struct(v *Value, p unsafe.Pointer) {
@@ -655,8 +654,10 @@ type ctype_decoder struct {
 
 // Create a new decoder bound to the c-value v
 func NewDecoder(v *Value) Decoder {
-	v.idx = 0
-	return &ctype_decoder{v: v}
+	dec := &ctype_decoder{v: v}
+	dec.v.idx = 0
+	//dec.v.Reset()
+	return dec
 }
 
 // Decode a ctypes.Value into a Go value
@@ -664,7 +665,7 @@ func (d *ctype_decoder) Decode(v interface{}) (*Value, error) {
 	rv := follow_ptr(reflect.ValueOf(v))
 	rt := rv.Type()
 	if rt != d.v.Type().GoType() {
-		return nil, errors.New("cannot decode this type [" + rt.String() + "]")
+		return nil, fmt.Errorf("cannot decode this type [%s]", rt.String())
 	}
 	//d.v.Reset()
 	d.v.idx = 0
@@ -797,6 +798,7 @@ func decode_array(v *Value, p unsafe.Pointer) {
 	op := dec_op_table[arr.Type().Elem().Kind()]
 
 	length := arr.Len()
+	//fmt.Printf("<--array-- [%d] [%v]\n", length, arr.Type().Elem().Kind())
 	for i := 0; i < length; i++ {
 		dst := unsafe.Pointer(arr.Index(i).UnsafeAddr())
 		op(v, dst)
@@ -813,25 +815,18 @@ func decode_ptr(v *Value, p unsafe.Pointer) {
 func decode_slice(v *Value, p unsafe.Pointer) {
 	slice := (*reflect.SliceHeader)(p)
 	decode_int(v, unsafe.Pointer(&slice.Len))
-	//println("-->",slice.Len)
+	//println("-->", slice.Len)
 	decode_ptr(v, unsafe.Pointer(&slice.Data))
 }
 
 func decode_string(v *Value, p unsafe.Pointer) {
 
-	// println("--decode-string...")
-	// fmt.Printf("--buf rst: %v\n",v.b[v.idx:])
-	cstr := (cstring)(unsafe.Pointer(&v.b[v.idx]))
-	// println("cstr:",cstr,"sz:",C.strlen(cstr))
+	cstr := v.cstrings[v.idx]
 	s := C.GoString(cstr)
-	// println("["+s+"]")
 	src := (*reflect.StringHeader)(unsafe.Pointer(&s))
 	dst := (*reflect.StringHeader)(p)
 	dst.Data = src.Data
 	dst.Len = src.Len
-	// println(v.idx)
-	// println(v.cstrings[v.idx])
-	// println("--decode-string...[done]")
 	v.idx += sz_uintptr
 }
 
@@ -845,7 +840,7 @@ func decode_struct(v *Value, p unsafe.Pointer) {
 }
 
 func decode_value(cv *Value, rv reflect.Value) {
-	//println("rv:",rv.Type())
+	//fmt.Printf("rv: %v\n",rv.Type())
 	kind := rv.Type().Kind()
 	op := dec_op_table[kind]
 	switch kind {
@@ -856,7 +851,9 @@ func decode_value(cv *Value, rv reflect.Value) {
 	case reflect.Array:
 		op(cv, unsafe.Pointer(&rv))
 	case reflect.Ptr:
-		op(cv, unsafe.Pointer(rv.Pointer()))
+		//fmt.Printf("--> ptr\n")
+		op(cv, unsafe.Pointer(rv.UnsafeAddr()))
+		//fmt.Printf("<-- ptr\n")
 	case reflect.Slice:
 		op(cv, unsafe.Pointer(rv.UnsafeAddr()))
 	case reflect.Struct:
@@ -866,6 +863,7 @@ func decode_value(cv *Value, rv reflect.Value) {
 		op(cv, unsafe.Pointer(rv.UnsafeAddr()))
 		//println("<==",kind.String())
 	}
+	//fmt.Printf("rv: %v [done]\n", rv.Type())
 }
 
 func init() {
