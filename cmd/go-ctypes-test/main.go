@@ -24,11 +24,16 @@ func (e *Event) String() string {
 
 type T1 struct {
 	i0 int
-	i1 int
 	s0 string
+	i1 int
 	f0 float64
 	f1 float32
 	f2 float32
+}
+
+func (t1 *T1) String() string {
+	return fmt.Sprintf("T1{i0=%v s0=\"%s\" i1=%v f0=%v f1=%v f2=%v}",
+		t1.i0, t1.s0, t1.i1, t1.f0, t1.f1, t1.f2)
 }
 
 func inspect(t reflect.Type) {
@@ -82,17 +87,26 @@ func main() {
 	ct := ctypes.TypeOf(e)
 	fmt.Printf("ct_e: %v %d\n", ct, ct.Size())
 
+	fmt.Printf(":: inspecting main.Event...\n")
 	inspect(ty_e)
 	cinspect(ct)
+
+	{
+		fmt.Printf(":: inspecting main.T1...\n")
+		ty_t1 := reflect.TypeOf(*e.t)
+		inspect(ty_t1)
+		ct_t1 := ctypes.TypeOf(*e.t)
+		cinspect(ct_t1)
+	}
 	fmt.Printf("---\n")
 
-	fmt.Printf("===\n")
-	{
+	if true {
+		fmt.Printf("=== encoding [Event]...\n")
 		c_value := ctypes.ValueOf(&e)
 		fmt.Printf("buf: %v\n", c_value.Buffer())
 		c_enc := ctypes.NewEncoder(c_value)
 		c_value,err := c_enc.Encode(&e)
-		fmt.Printf("v: %s\n", e.String())
+		fmt.Printf("v: %v\n", &e)
 		fmt.Printf("buf: %v\n", c_value.Buffer())
 		fmt.Printf("err: %v\n", err)
 		
@@ -100,7 +114,7 @@ func main() {
 			vv := Event{}
 			c_dec := ctypes.NewDecoder(c_value)
 			c_vv, err := c_dec.Decode(&vv)
-			fmt.Printf("v: %s\n", vv.String())
+			fmt.Printf("v: %v\n", &vv)
 			//fmt.Printf("buf: %v\n", c_value.Buffer())
 			fmt.Printf("buf: %v\n", c_vv.Buffer())
 			fmt.Printf("err: %v\n", err)
@@ -108,13 +122,13 @@ func main() {
 	}
 
 
-	fmt.Printf("===\n")
-	{
-		v := T1{i0:32, i1:42, s0:"foo", f0:256., f1:666., f2:42.}
+	if true {
+		fmt.Printf("=== encoding [T1]...\n")
+		v := T1{i0:32, s0:"foo - bar", i1:42, f0:256., f1:666., f2:42.}
 		c_value := ctypes.ValueOf(&v)
 		c_enc := ctypes.NewEncoder(c_value)
 		c_value,err := c_enc.Encode(&v)
-		fmt.Printf("v: %v\n", v)
+		fmt.Printf("v: %v\n", &v)
 		fmt.Printf("buf: %v\n", c_value.Buffer())
 		fmt.Printf("err: %v\n", err)
 		
@@ -122,7 +136,7 @@ func main() {
 			vv := T1{}
 			c_dec := ctypes.NewDecoder(c_value)
 			c_vv, err := c_dec.Decode(&vv)
-			fmt.Printf("v: %v\n", vv)
+			fmt.Printf("v: %v\n", &vv)
 			fmt.Printf("buf: %v\n", c_value.Buffer())
 			fmt.Printf("buf: %v\n", c_vv.Buffer())
 			fmt.Printf("err: %v\n", err)
